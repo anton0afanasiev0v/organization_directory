@@ -1,46 +1,50 @@
 import uvicorn
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from .config import settings
-from .database import engine, Base
+from .api.v1 import organizations, buildings, activities
+from .database import Base, engine
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)
+    print("Starting Organization Directory API...")
+    # Используем асинхронное создание таблиц
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
     yield
 
+    print("Shutting down...")
+    await engine.dispose()
 
 app = FastAPI(
-    title="Auth System API",
-    description="Система аутентификации и авторизации с ролями и разрешениями",
-    version="1.0.0",
+    title=settings.PROJECT_NAME,
+    version=settings.PROJECT_VERSION,
+    description="REST API для справочника Организаций, Зданий и Деятельности",
     lifespan=lifespan
 )
 
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"]
-)
-
-api_url = "/api/v1"
-system_api_url = f"{api_url}/system"
-
 # Include routers
-
+app.include_router(organizations.router)
+app.include_router(buildings.router)
+app.include_router(activities.router)
 
 @app.get("/")
 async def root():
-    return {"message": "Auth System API", "version": "1.0.0"}
+    return {
+        "message": "Organization Directory API",
+        "version": settings.PROJECT_VERSION,
+        "docs": "/docs",
+    }
 
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(
+        "app.main:app",
+        host="0.0.0.0",
+        port=settings.PORT,
+        reload=True
+    )

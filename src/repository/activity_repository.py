@@ -1,0 +1,84 @@
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+from typing import List, Optional
+
+from ..model.activity import Activity
+from ..dto.activity import ActivityCreate
+
+class ActivityRepository:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+        self.model = Activity
+
+    async def get(self, activity_id: int) -> Optional[Activity]:
+        """Получить деятельность по ID"""
+        result = await self.db.execute(
+            select(Activity).where(activity_id == Activity.id)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_with_relations(self, activity_id: int) -> Optional[Activity]:
+        """Получить деятельность со всеми связями"""
+        result = await self.db.execute(
+            select(Activity)
+            .where(activity_id == Activity.id)
+            .options(
+                selectinload(Activity.parent),
+                selectinload(Activity.children),
+                selectinload(Activity.organizations)
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def get_by_name_and_parent(self, name: str, parent_id: Optional[int]) -> Optional[Activity]:
+        """Получить деятельность по имени и родителю"""
+        result = await self.db.execute(
+            select(Activity).where(
+                (name == Activity.name) & ( parent_id == Activity.parent_id )
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def get_children(self, parent_id: Optional[int]) -> List[Activity]:
+        """Получить дочерние деятельности"""
+        result = await self.db.execute(
+            select(Activity).where(parent_id == Activity.parent_id)
+        )
+        return result.scalars().all()
+
+    async def get_all(self) -> List[Activity]:
+        """Получить все деятельности"""
+        result = await self.db.execute(select(Activity))
+        return result.scalars().all()
+
+    async def create(self, activity_data: ActivityCreate) -> Activity:
+        """Создать новую деятельность"""
+        activity = Activity(**activity_data.model_dump())
+        self.db.add(activity)
+        await self.db.flush()
+        await self.db.refresh(activity)
+        return activity
+
+    async def update(self, activity_id: int, activity_data: ActivityCreate) -> Optional[Activity]:
+        """Обновить деятельность"""
+        activity = await self.get(activity_id)
+        if not activity:
+            return None
+
+        for field, value in activity_data.model_dump().items():
+            setattr(activity, field, value)
+
+        await self.db.flush()
+        await self.db.refresh(activity)
+        return activity
+
+    async def delete(self, activity_id: int) -> bool:
+        """Удалить деятельность"""
+        activity = await self.get(activity_id)
+        if not activity:
+            return False
+
+        await self.db.delete(activity)
+        await self.db.flush()
+        return True

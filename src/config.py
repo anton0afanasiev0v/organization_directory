@@ -2,16 +2,21 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    # Database
-    DATABASE_URL: str = "postgresql://postgres:password@127.0.0.1/backend_db"
+    PROJECT_NAME: str = "Organization Directory API"
+    PROJECT_VERSION: str = "1.0.0"
 
-    # JWT
-    SECRET_KEY: str = "your-secret-key-here"
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    POSTGRES_USER: str = "user"
+    POSTGRES_PASSWORD: str ="password"
+    POSTGRES_SERVER: str = "localhost"
+    POSTGRES_PORT: str = "5432"
+    POSTGRES_DB: str = "organization_db"
+    DEBUG: bool = False
 
-    # CORS
-    CORS_ORIGINS: list = ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001"]
+    PORT: int = 80
+
+    DATABASE_URL: str = f"postgresql+asyncpg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_SERVER}:{POSTGRES_PORT}/{POSTGRES_DB}"
+
+    API_KEY: str = "test-api-key-123"
 
     class Config:
         env_file = ".env"
