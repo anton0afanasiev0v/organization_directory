@@ -1,5 +1,5 @@
-from database import get_db
-from service import BuildingService, ActivityService, OrganizationService
+from ..database import get_db
+from ..service import BuildingService, ActivityService, OrganizationService
 from fastapi import Depends
 
 async def get_building_service(db=Depends(get_db)) -> BuildingService:
