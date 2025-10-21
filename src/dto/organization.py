@@ -42,11 +42,3 @@ class Organization(OrganizationSimple):
 
     class Config:
         from_attributes = True
-
-# # Для избежания circular imports
-# from app.schemas.building import BuildingWithOrganizations
-# from app.schemas.activity import ActivityWithChildren
-#
-# ActivityWithChildren.update_forward_refs()
-# ActivityTree.update_forward_refs()
-# BuildingWithOrganizations.update_forward_refs()
