@@ -1,13 +1,14 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List, Optional
 import logging
 
-from ..repository import OrganizationRepository, BuildingRepository, ActivityRepository
-from ..dto.organization import OrganizationCreate, OrganizationUpdate, Organization
-from ..service import ActivityService
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from ..database import with_transaction
+from ..dto.organization import Organization, OrganizationCreate, OrganizationUpdate
+from ..repository import ActivityRepository, BuildingRepository, OrganizationRepository
+from ..service import ActivityService
 
 logger = logging.getLogger(__name__)
+
 
 class OrganizationService:
     def __init__(self, db: AsyncSession):
@@ -16,25 +17,31 @@ class OrganizationService:
         self.activity_repo = ActivityRepository(db)
         self.activity_service = ActivityService(db)
 
-    async def get_organization(self, organization_id: int) -> Optional[Organization]:
+    async def get_organization(self, organization_id: int) -> Organization | None:
         """Получить организацию по ID (бизнес-логика)"""
         organization = await self.organization_repo.get_with_relations(organization_id)
         if organization:
             return Organization.model_validate(organization)
         return None
 
-    async def get_all_organizations(self, skip: int = 0, limit: int = 100) -> List[Organization]:
+    async def get_all_organizations(
+        self, skip: int = 0, limit: int = 100
+    ) -> list[Organization]:
         """Получить все организации (бизнес-логика)"""
         organizations = await self.organization_repo.get_all(skip=skip, limit=limit)
         return [Organization.model_validate(org) for org in organizations]
 
     @with_transaction
-    async def create_organization(self, organization_data: OrganizationCreate) -> Organization:
+    async def create_organization(
+        self, organization_data: OrganizationCreate
+    ) -> Organization:
         """Создать новую организацию (бизнес-логика)"""
         # Проверяем бизнес-правила
 
         # 1. Проверяем уникальность имени
-        existing_organization = await self.organization_repo.get_by_name(organization_data.name)
+        existing_organization = await self.organization_repo.get_by_name(
+            organization_data.name
+        )
         if existing_organization:
             raise ValueError("Организация с таким названием уже существует")
 
@@ -58,7 +65,9 @@ class OrganizationService:
         organization = await self.organization_repo.create(organization_data)
         return Organization.model_validate(organization)
 
-    async def update_organization(self, organization_id: int, update_data: OrganizationUpdate) -> Optional[Organization]:
+    async def update_organization(
+        self, organization_id: int, update_data: OrganizationUpdate
+    ) -> Organization | None:
         """Обновить организацию (бизнес-логика)"""
         existing_organization = await self.organization_repo.get(organization_id)
         if not existing_organization:
@@ -68,8 +77,13 @@ class OrganizationService:
 
         # 1. Проверяем уникальность имени
         if update_data.name and update_data.name != existing_organization.name:
-            organization_with_same_name = await self.organization_repo.get_by_name(update_data.name)
-            if organization_with_same_name and organization_with_same_name.id != organization_id:
+            organization_with_same_name = await self.organization_repo.get_by_name(
+                update_data.name
+            )
+            if (
+                organization_with_same_name
+                and organization_with_same_name.id != organization_id
+            ):
                 raise ValueError("Организация с таким названием уже существует")
 
         # 2. Проверяем существование здания
@@ -91,7 +105,9 @@ class OrganizationService:
                 if not self._validate_phone_format(phone.phone_number):
                     raise ValueError(f"Неверный формат телефона: {phone.phone_number}")
 
-        updated_organization = await self.organization_repo.update(organization_id, update_data)
+        updated_organization = await self.organization_repo.update(
+            organization_id, update_data
+        )
         if updated_organization:
             return Organization.model_validate(updated_organization)
         return None
@@ -106,7 +122,9 @@ class OrganizationService:
 
         return await self.organization_repo.delete(organization_id)
 
-    async def get_organizations_by_building(self, building_id: int) -> List[Organization]:
+    async def get_organizations_by_building(
+        self, building_id: int
+    ) -> list[Organization]:
         """Получить организации в здании (бизнес-логика)"""
         # Проверяем существование здания
         building = await self.building_repo.get(building_id)
@@ -116,7 +134,9 @@ class OrganizationService:
         organizations = await self.organization_repo.get_by_building(building_id)
         return [Organization.model_validate(org) for org in organizations]
 
-    async def get_organizations_by_activity(self, activity_id: int) -> List[Organization]:
+    async def get_organizations_by_activity(
+        self, activity_id: int
+    ) -> list[Organization]:
         """Получить организации по виду деятельности (бизнес-логика)"""
         # Проверяем существование деятельности
         activity = await self.activity_repo.get(activity_id)
@@ -124,12 +144,14 @@ class OrganizationService:
             raise ValueError("Деятельность не существует")
 
         # Получаем всех потомков деятельности
-        activity_ids = await self.activity_service.get_descendant_activity_ids(activity_id)
+        activity_ids = await self.activity_service.get_descendant_activity_ids(
+            activity_id
+        )
 
         organizations = await self.organization_repo.get_by_activities(activity_ids)
         return [Organization.model_validate(org) for org in organizations]
 
-    async def search_organizations_by_name(self, name: str) -> List[Organization]:
+    async def search_organizations_by_name(self, name: str) -> list[Organization]:
         """Поиск организаций по названию (бизнес-логика)"""
         if len(name) < 2:
             raise ValueError("Поисковый запрос должен содержать минимум 2 символа")
@@ -141,5 +163,6 @@ class OrganizationService:
         """Валидация формата телефона (вспомогательный метод)"""
         # Простая валидация - можно заменить на более сложную логику
         import re
-        phone_pattern = re.compile(r'^[\d\s\-\+\(\)]+$')
+
+        phone_pattern = re.compile(r"^[\d\s\-\+\(\)]+$")
         return bool(phone_pattern.match(phone)) and len(phone) >= 5

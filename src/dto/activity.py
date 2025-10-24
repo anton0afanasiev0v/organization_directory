@@ -1,12 +1,14 @@
 from pydantic import BaseModel
-from typing import List, Optional
+
 
 class ActivityBase(BaseModel):
     name: str
-    parent_id: Optional[int] = None
+    parent_id: int | None = None
+
 
 class ActivityCreate(ActivityBase):
     pass
+
 
 class Activity(ActivityBase):
     id: int
@@ -14,9 +16,11 @@ class Activity(ActivityBase):
     class Config:
         from_attributes = True
 
+
 class ActivityWithChildren(Activity):
-    children: List['ActivityWithChildren'] = []
+    children: list["ActivityWithChildren"] = []
+
 
 class ActivityTree(Activity):
     level: int
-    children: List['ActivityTree'] = []
+    children: list["ActivityTree"] = []

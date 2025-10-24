@@ -1,24 +1,26 @@
-from abc import ABC, abstractmethod
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete
-from typing import List, Optional, TypeVar, Generic, Type
-from pydantic import BaseModel
 import logging
+from abc import ABC
+from typing import Generic, TypeVar
 
-ModelType = TypeVar('ModelType')
-CreateSchemaType = TypeVar('CreateSchemaType', bound=BaseModel)
-UpdateSchemaType = TypeVar('UpdateSchemaType', bound=BaseModel)
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+ModelType = TypeVar("ModelType")
+CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
+UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 
 logger = logging.getLogger(__name__)
+
 
 class BaseRepository(ABC, Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     """Базовый репозиторий с CRUD операциями"""
 
-    def __init__(self, db: AsyncSession, model: Type[ModelType]):
+    def __init__(self, db: AsyncSession, model: type[ModelType]):
         self.db = db
         self.model = model
 
-    async def get(self, id: int) -> Optional[ModelType]:
+    async def get(self, id: int) -> ModelType | None:
         """Получить объект по ID"""
         try:
             result = await self.db.execute(
@@ -30,11 +32,8 @@ class BaseRepository(ABC, Generic[ModelType, CreateSchemaType, UpdateSchemaType]
             raise
 
     async def get_multi(
-            self,
-            skip: int = 0,
-            limit: int = 100,
-            **filters
-    ) -> List[ModelType]:
+        self, skip: int = 0, limit: int = 100, **filters
+    ) -> list[ModelType]:
         """Получить список объектов с фильтрацией"""
         try:
             query = select(self.model)
@@ -64,7 +63,7 @@ class BaseRepository(ABC, Generic[ModelType, CreateSchemaType, UpdateSchemaType]
             logger.error(f"Error creating {self.model.__name__}: {str(e)}")
             raise
 
-    async def update(self, id: int, obj_in: UpdateSchemaType) -> Optional[ModelType]:
+    async def update(self, id: int, obj_in: UpdateSchemaType) -> ModelType | None:
         """Обновить объект"""
         try:
             db_obj = await self.get(id)

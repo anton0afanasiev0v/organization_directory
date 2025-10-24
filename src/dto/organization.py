@@ -1,13 +1,16 @@
 from pydantic import BaseModel
-from typing import List, Optional
-from .building import Building
+
 from .activity import Activity
+from .building import Building
+
 
 class PhoneBase(BaseModel):
     phone_number: str
 
+
 class PhoneCreate(PhoneBase):
     pass
+
 
 class Phone(PhoneBase):
     id: int
@@ -15,19 +18,23 @@ class Phone(PhoneBase):
     class Config:
         from_attributes = True
 
+
 class OrganizationBase(BaseModel):
     name: str
     building_id: int
 
+
 class OrganizationCreate(OrganizationBase):
-    phone_numbers: List[PhoneCreate] = []
-    activity_ids: List[int] = []
+    phone_numbers: list[PhoneCreate] = []
+    activity_ids: list[int] = []
+
 
 class OrganizationUpdate(BaseModel):
-    name: Optional[str] = None
-    building_id: Optional[int] = None
-    phone_numbers: Optional[List[PhoneCreate]] = None
-    activity_ids: Optional[List[int]] = None
+    name: str | None = None
+    building_id: int | None = None
+    phone_numbers: list[PhoneCreate] | None = None
+    activity_ids: list[int] | None = None
+
 
 class OrganizationSimple(OrganizationBase):
     id: int
@@ -35,9 +42,10 @@ class OrganizationSimple(OrganizationBase):
     class Config:
         from_attributes = True
 
+
 class Organization(OrganizationSimple):
-    phone_numbers: List[Phone] = []
-    activities: List[Activity] = []
+    phone_numbers: list[Phone] = []
+    activities: list[Activity] = []
     building: Building
 
     class Config:

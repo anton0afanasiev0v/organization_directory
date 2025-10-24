@@ -1,17 +1,17 @@
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload
-from typing import List, Optional
 
-from ..model.building import Building
 from ..dto.building import BuildingCreate
+from ..model.building import Building
 from .base import BaseRepository
+
 
 class BuildingRepository(BaseRepository[Building, BuildingCreate, BuildingCreate]):
     def __init__(self, db: AsyncSession):
         super().__init__(db, Building)
 
-    async def get_with_organizations(self, building_id: int) -> Optional[Building]:
+    async def get_with_organizations(self, building_id: int) -> Building | None:
         """Получить здание с организациями"""
         result = await self.db.execute(
             select(Building)
@@ -20,7 +20,7 @@ class BuildingRepository(BaseRepository[Building, BuildingCreate, BuildingCreate
         )
         return result.scalar_one_or_none()
 
-    async def get_by_address(self, address: str) -> Optional[Building]:
+    async def get_by_address(self, address: str) -> Building | None:
         """Получить здание по адресу"""
         result = await self.db.execute(
             select(Building).where(address == Building.address)
@@ -28,26 +28,22 @@ class BuildingRepository(BaseRepository[Building, BuildingCreate, BuildingCreate
         return result.scalar_one_or_none()
 
     async def get_in_coordinate_range(
-            self,
-            min_lat: float,
-            max_lat: float,
-            min_lng: float,
-            max_lng: float
-    ) -> List[Building]:
+        self, min_lat: float, max_lat: float, min_lng: float, max_lng: float
+    ) -> list[Building]:
         """Получить здания в прямоугольной области"""
         result = await self.db.execute(
             select(Building)
             .where(
                 and_(
                     Building.latitude.between(min_lat, max_lat),
-                    Building.longitude.between(min_lng, max_lng)
+                    Building.longitude.between(min_lng, max_lng),
                 )
             )
             .options(selectinload(Building.organizations))
         )
         return result.scalars().all()
 
-    async def get_all_with_organizations(self) -> List[Building]:
+    async def get_all_with_organizations(self) -> list[Building]:
         """Получить все здания с организациями"""
         result = await self.db.execute(
             select(Building).options(selectinload(Building.organizations))

@@ -1,25 +1,26 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List, Optional
 import logging
 
-from ..repository.activity_repository import ActivityRepository
-from ..dto.activity import ActivityCreate, ActivityTree
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from ..database import with_transaction
+from ..dto.activity import ActivityCreate, ActivityTree
+from ..repository.activity_repository import ActivityRepository
 
 logger = logging.getLogger(__name__)
+
 
 class ActivityService:
     def __init__(self, db: AsyncSession):
         self.repository = ActivityRepository(db)
 
-    async def get_activity(self, activity_id: int) -> Optional[ActivityCreate]:
+    async def get_activity(self, activity_id: int) -> ActivityCreate | None:
         """Получить деятельность по ID (бизнес-логика)"""
         activity = await self.repository.get_with_relations(activity_id)
         if activity:
             return ActivityCreate.model_validate(activity)
         return None
 
-    async def get_all_activities(self) -> List[ActivityCreate]:
+    async def get_all_activities(self) -> list[ActivityCreate]:
         """Получить все деятельности (бизнес-логика)"""
         activities = await self.repository.get_all()
         return [ActivityCreate.model_validate(activity) for activity in activities]
@@ -29,11 +30,12 @@ class ActivityService:
         """Создать новую деятельность (бизнес-логика)"""
         # Проверяем бизнес-правила
         existing_activity = await self.repository.get_by_name_and_parent(
-            activity_data.name,
-            activity_data.parent_id
+            activity_data.name, activity_data.parent_id
         )
         if existing_activity:
-            raise ValueError("Деятельность с таким именем уже существует на этом уровне")
+            raise ValueError(
+                "Деятельность с таким именем уже существует на этом уровне"
+            )
 
         # Проверяем максимальную вложенность (3 уровня)
         if activity_data.parent_id:
@@ -44,25 +46,33 @@ class ActivityService:
         activity = await self.repository.create(activity_data)
         return ActivityCreate.model_validate(activity)
 
-    async def update_activity(self, activity_id: int, activity_data: ActivityCreate) -> Optional[ActivityCreate]:
+    async def update_activity(
+        self, activity_id: int, activity_data: ActivityCreate
+    ) -> ActivityCreate | None:
         """Обновить деятельность (бизнес-логика)"""
         existing_activity = await self.repository.get(activity_id)
         if not existing_activity:
             return None
 
         # Проверяем уникальность имени
-        if activity_data.name != existing_activity.name or activity_data.parent_id != existing_activity.parent_id:
+        if (
+            activity_data.name != existing_activity.name
+            or activity_data.parent_id != existing_activity.parent_id
+        ):
             activity_with_same_name = await self.repository.get_by_name_and_parent(
-                activity_data.name,
-                activity_data.parent_id
+                activity_data.name, activity_data.parent_id
             )
             if activity_with_same_name and activity_with_same_name.id != activity_id:
-                raise ValueError("Деятельность с таким именем уже существует на этом уровне")
+                raise ValueError(
+                    "Деятельность с таким именем уже существует на этом уровне"
+                )
 
         # Проверяем циклические зависимости
         if activity_data.parent_id:
             if await self._would_create_cycle(activity_id, activity_data.parent_id):
-                raise ValueError("Нельзя создавать циклические зависимости в дереве деятельностей")
+                raise ValueError(
+                    "Нельзя создавать циклические зависимости в дереве деятельностей"
+                )
 
         updated_activity = await self.repository.update(activity_id, activity_data)
         if updated_activity:
@@ -84,9 +94,12 @@ class ActivityService:
 
         return await self.repository.delete(activity_id)
 
-    async def get_activity_tree(self, max_level: int = 3) -> List[ActivityTree]:
+    async def get_activity_tree(self, max_level: int = 3) -> list[ActivityTree]:
         """Получить дерево деятельностей (бизнес-логика)"""
-        async def build_tree(parent_id: Optional[int] = None, level: int = 0) -> List[ActivityTree]:
+
+        async def build_tree(
+            parent_id: int | None = None, level: int = 0
+        ) -> list[ActivityTree]:
             if level >= max_level:
                 return []
 
@@ -95,21 +108,24 @@ class ActivityService:
             tree = []
             for child in children:
                 grandchildren = await build_tree(child.id, level + 1)
-                tree.append(ActivityTree(
-                    id=child.id,
-                    name=child.name,
-                    parent_id=child.parent_id,
-                    level=level,
-                    children=grandchildren
-                ))
+                tree.append(
+                    ActivityTree(
+                        id=child.id,
+                        name=child.name,
+                        parent_id=child.parent_id,
+                        level=level,
+                        children=grandchildren,
+                    )
+                )
 
             return tree
 
         return await build_tree()
 
-    async def get_descendant_activity_ids(self, activity_id: int) -> List[int]:
+    async def get_descendant_activity_ids(self, activity_id: int) -> list[int]:
         """Получить ID всех потомков деятельности (бизнес-логика)"""
-        async def get_children_ids(parent_id: int) -> List[int]:
+
+        async def get_children_ids(parent_id: int) -> list[int]:
             children = await self.repository.get_children(parent_id)
             all_ids = [parent_id]
 

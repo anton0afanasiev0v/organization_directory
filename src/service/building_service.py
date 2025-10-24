@@ -1,26 +1,29 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List, Optional
-from geopy.distance import geodesic
 import logging
 
-from ..repository.building_repository import BuildingRepository
-from ..dto.building import BuildingCreate, CoordinateRange, RadiusSearch
+from geopy.distance import geodesic
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from ..database import with_transaction
+from ..dto.building import BuildingCreate, CoordinateRange, RadiusSearch
+from ..repository.building_repository import BuildingRepository
 
 logger = logging.getLogger(__name__)
+
 
 class BuildingService:
     def __init__(self, db: AsyncSession):
         self.repository = BuildingRepository(db)
 
-    async def get_building(self, building_id: int) -> Optional[BuildingCreate]:
+    async def get_building(self, building_id: int) -> BuildingCreate | None:
         """Получить здание по ID (бизнес-логика)"""
         building = await self.repository.get_with_organizations(building_id)
         if building:
             return BuildingCreate.model_validate(building)
         return None
 
-    async def get_all_buildings(self, skip: int = 0, limit: int = 100) -> List[BuildingCreate]:
+    async def get_all_buildings(
+        self, skip: int = 0, limit: int = 100
+    ) -> list[BuildingCreate]:
         """Получить список зданий (бизнес-логика)"""
         buildings = await self.repository.get_multi(skip=skip, limit=limit)
         return [BuildingCreate.model_validate(building) for building in buildings]
@@ -42,7 +45,9 @@ class BuildingService:
         building = await self.repository.create(building_data)
         return BuildingCreate.model_validate(building)
 
-    async def update_building(self, building_id: int, building_data: BuildingCreate) -> Optional[BuildingCreate]:
+    async def update_building(
+        self, building_id: int, building_data: BuildingCreate
+    ) -> BuildingCreate | None:
         """Обновить здание (бизнес-логика)"""
         existing_building = await self.repository.get(building_id)
         if not existing_building:
@@ -50,8 +55,13 @@ class BuildingService:
 
         # Проверяем уникальность адреса
         if building_data.address != existing_building.address:
-            building_with_same_address = await self.repository.get_by_address(building_data.address)
-            if building_with_same_address and building_with_same_address.id != building_id:
+            building_with_same_address = await self.repository.get_by_address(
+                building_data.address
+            )
+            if (
+                building_with_same_address
+                and building_with_same_address.id != building_id
+            ):
                 raise ValueError("Здание с таким адресом уже существует")
 
         updated_building = await self.repository.update(building_id, building_data)
@@ -71,17 +81,21 @@ class BuildingService:
 
         return await self.repository.delete(building_id)
 
-    async def search_buildings_in_range(self, coord_range: CoordinateRange) -> List[BuildingCreate]:
+    async def search_buildings_in_range(
+        self, coord_range: CoordinateRange
+    ) -> list[BuildingCreate]:
         """Поиск зданий в прямоугольной области (бизнес-логика)"""
         buildings = await self.repository.get_in_coordinate_range(
             coord_range.min_lat,
             coord_range.max_lat,
             coord_range.min_lng,
-            coord_range.max_lng
+            coord_range.max_lng,
         )
         return [BuildingCreate.model_validate(building) for building in buildings]
 
-    async def search_buildings_in_radius(self, search: RadiusSearch) -> List[BuildingCreate]:
+    async def search_buildings_in_radius(
+        self, search: RadiusSearch
+    ) -> list[BuildingCreate]:
         """Поиск зданий в радиусе (бизнес-логика)"""
         all_buildings = await self.repository.get_all_with_organizations()
 

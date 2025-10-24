@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     PROJECT_VERSION: str = "1.0.0"
 
     POSTGRES_USER: str = "user"
-    POSTGRES_PASSWORD: str ="password"
+    POSTGRES_PASSWORD: str = "password"
     POSTGRES_SERVER: str = "localhost"
     POSTGRES_PORT: str = "5432"
     POSTGRES_DB: str = "organization_db"

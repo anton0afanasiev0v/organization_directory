@@ -1,12 +1,17 @@
 from pydantic import BaseModel
 
+from .organization import OrganizationSimple
+
+
 class BuildingBase(BaseModel):
     address: str
     latitude: float
     longitude: float
 
+
 class BuildingCreate(BuildingBase):
     pass
+
 
 class Building(BuildingBase):
     id: int
@@ -14,14 +19,17 @@ class Building(BuildingBase):
     class Config:
         from_attributes = True
 
+
 class BuildingWithOrganizations(Building):
-    organizations: list['OrganizationSimple'] = []
+    organizations: list[OrganizationSimple] = []
+
 
 class CoordinateRange(BaseModel):
     min_lat: float
     max_lat: float
     min_lng: float
     max_lng: float
+
 
 class RadiusSearch(BaseModel):
     latitude: float

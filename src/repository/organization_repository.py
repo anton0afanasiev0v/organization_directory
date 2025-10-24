@@ -1,24 +1,24 @@
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, delete
 from sqlalchemy.orm import selectinload
-from typing import List, Optional
 
-from ..model import Activity, Organization, OrganizationPhone
 from ..dto.organization import OrganizationCreate, OrganizationUpdate
+from ..model import Activity, Organization, OrganizationPhone
+
 
 class OrganizationRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.model = Organization
 
-    async def get(self, organization_id: int) -> Optional[Organization]:
+    async def get(self, organization_id: int) -> Organization | None:
         """Получить организацию по ID"""
         result = await self.db.execute(
             select(Organization).where(organization_id == Organization.id)
         )
         return result.scalar_one_or_none()
 
-    async def get_with_relations(self, organization_id: int) -> Optional[Organization]:
+    async def get_with_relations(self, organization_id: int) -> Organization | None:
         """Получить организацию со всеми связями"""
         result = await self.db.execute(
             select(Organization)
@@ -26,19 +26,19 @@ class OrganizationRepository:
             .options(
                 selectinload(Organization.phone_numbers),
                 selectinload(Organization.activities),
-                selectinload(Organization.building)
+                selectinload(Organization.building),
             )
         )
         return result.scalar_one_or_none()
 
-    async def get_by_name(self, name: str) -> Optional[Organization]:
+    async def get_by_name(self, name: str) -> Organization | None:
         """Получить организацию по имени"""
         result = await self.db.execute(
             select(Organization).where(name == Organization.name)
         )
         return result.scalar_one_or_none()
 
-    async def get_all(self, skip: int = 0, limit: int = 100) -> List[Organization]:
+    async def get_all(self, skip: int = 0, limit: int = 100) -> list[Organization]:
         """Получить все организации"""
         result = await self.db.execute(
             select(Organization)
@@ -47,24 +47,24 @@ class OrganizationRepository:
             .options(
                 selectinload(Organization.phone_numbers),
                 selectinload(Organization.activities),
-                selectinload(Organization.building)
+                selectinload(Organization.building),
             )
         )
         return result.scalars().all()
 
-    async def get_by_building(self, building_id: int) -> List[Organization]:
+    async def get_by_building(self, building_id: int) -> list[Organization]:
         """Получить организации в здании"""
         result = await self.db.execute(
             select(Organization)
             .where(building_id == Organization.building_id)
             .options(
                 selectinload(Organization.phone_numbers),
-                selectinload(Organization.activities)
+                selectinload(Organization.activities),
             )
         )
         return result.scalars().all()
 
-    async def get_by_activities(self, activity_ids: List[int]) -> List[Organization]:
+    async def get_by_activities(self, activity_ids: list[int]) -> list[Organization]:
         """Получить организации по видам деятельности"""
         result = await self.db.execute(
             select(Organization)
@@ -73,13 +73,13 @@ class OrganizationRepository:
             .options(
                 selectinload(Organization.phone_numbers),
                 selectinload(Organization.activities),
-                selectinload(Organization.building)
+                selectinload(Organization.building),
             )
             .distinct()
         )
         return result.scalars().all()
 
-    async def search_by_name(self, name: str) -> List[Organization]:
+    async def search_by_name(self, name: str) -> list[Organization]:
         """Поиск организаций по названию"""
         result = await self.db.execute(
             select(Organization)
@@ -87,7 +87,7 @@ class OrganizationRepository:
             .options(
                 selectinload(Organization.phone_numbers),
                 selectinload(Organization.activities),
-                selectinload(Organization.building)
+                selectinload(Organization.building),
             )
         )
         return result.scalars().all()
@@ -95,8 +95,7 @@ class OrganizationRepository:
     async def create(self, organization_data: OrganizationCreate) -> Organization:
         """Создать новую организацию"""
         organization = Organization(
-            name=organization_data.name,
-            building_id=organization_data.building_id
+            name=organization_data.name, building_id=organization_data.building_id
         )
         self.db.add(organization)
         await self.db.flush()
@@ -104,8 +103,7 @@ class OrganizationRepository:
         # Добавляем телефоны
         for phone_data in organization_data.phone_numbers:
             phone = OrganizationPhone(
-                phone_number=phone_data.phone_number,
-                organization_id=organization.id
+                phone_number=phone_data.phone_number, organization_id=organization.id
             )
             self.db.add(phone)
 
@@ -121,7 +119,9 @@ class OrganizationRepository:
         await self.db.refresh(organization)
         return organization
 
-    async def update(self, organization_id: int, update_data: OrganizationUpdate) -> Optional[Organization]:
+    async def update(
+        self, organization_id: int, update_data: OrganizationUpdate
+    ) -> Organization | None:
         """Обновить организацию"""
         organization = await self.get_with_relations(organization_id)
         if not organization:
@@ -145,7 +145,7 @@ class OrganizationRepository:
             for phone_data in update_data.phone_numbers:
                 phone = OrganizationPhone(
                     phone_number=phone_data.phone_number,
-                    organization_id=organization_id
+                    organization_id=organization_id,
                 )
                 self.db.add(phone)
 
