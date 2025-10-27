@@ -2,7 +2,6 @@ from .activity import Activity, ActivityCreate, ActivityTree, ActivityWithChildr
 from .building import (
     Building,
     BuildingCreate,
-    BuildingWithOrganizations,
     CoordinateRange,
     RadiusSearch,
 )
@@ -22,7 +21,6 @@ __all__ = [
     ActivityTree,
     Building,
     BuildingCreate,
-    BuildingWithOrganizations,
     CoordinateRange,
     RadiusSearch,
     Organization,

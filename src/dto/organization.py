@@ -48,5 +48,9 @@ class Organization(OrganizationSimple):
     activities: list[Activity] = []
     building: Building
 
+    # Используем строковые аннотации или TYPE_CHECKING
+    activities: list["Activity"] = []
+    building: "Building"
+
     class Config:
         from_attributes = True
