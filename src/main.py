@@ -6,14 +6,28 @@ from fastapi import FastAPI
 from .api.v1 import activities, buildings, organizations
 from .config import settings
 from .database import Base, engine
+from .service import FixtureService
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     print("Starting Organization Directory API...")
+    
     # Используем асинхронное создание таблиц
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    
+    # Запускаем FixtureService если включен
+    if settings.FIXTURE_SERVICE:
+        print("FixtureService enabled - creating test data...")
+        try:
+            async with engine.begin() as conn:
+                fixture_service = FixtureService(conn)
+                result = await fixture_service.create_test_data()
+                print(f"FixtureService result: {result}")
+        except Exception as e:
+            print(f"Error running FixtureService: {str(e)}")
+    
     yield
 
     print("Shutting down...")

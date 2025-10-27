@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     POSTGRES_PORT: str = "5432"
     POSTGRES_DB: str = "organization_db"
     DEBUG: bool = False
+    FIXTURE_SERVICE: bool = True
 
     PORT: int = 80
 
@@ -23,3 +24,4 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
