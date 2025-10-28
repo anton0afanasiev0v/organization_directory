@@ -4,12 +4,12 @@ from sqlalchemy.orm import selectinload
 
 from ..dto.activity import ActivityCreate
 from ..model.activity import Activity
+from .base import BaseRepository
 
 
-class ActivityRepository:
+class ActivityRepository(BaseRepository[Activity, ActivityCreate, ActivityCreate]):
     def __init__(self, db: AsyncSession):
-        self.db = db
-        self.model = Activity
+        super().__init__(db, Activity)
 
     async def get(self, activity_id: int) -> Activity | None:
         """Получить деятельность по ID"""
@@ -43,14 +43,14 @@ class ActivityRepository:
         return result.scalar_one_or_none()
 
     async def get_children(self, parent_id: int | None) -> list[Activity]:
-        """Получить дочерние деятельности"""
+        """Получить дочерние деятельность"""
         result = await self.db.execute(
             select(Activity).where(parent_id == Activity.parent_id)
         )
         return result.scalars().all()
 
     async def get_all(self) -> list[Activity]:
-        """Получить все деятельности"""
+        """Получить все деятельность"""
         result = await self.db.execute(select(Activity))
         return result.scalars().all()
 

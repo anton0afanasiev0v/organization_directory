@@ -1,4 +1,4 @@
-from sqlalchemy import delete, select
+from sqlalchemy import and_, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -52,6 +52,17 @@ class OrganizationRepository:
         )
         return result.scalars().all()
 
+    async def get_all_with_buildings(self) -> list[Organization]:
+        """Получить все организации со зданиями"""
+        result = await self.db.execute(
+            select(Organization).options(
+                selectinload(Organization.phone_numbers),
+                selectinload(Organization.activities),
+                selectinload(Organization.building),
+            )
+        )
+        return result.scalars().all()
+
     async def get_by_building(self, building_id: int) -> list[Organization]:
         """Получить организации в здании"""
         result = await self.db.execute(
@@ -60,6 +71,7 @@ class OrganizationRepository:
             .options(
                 selectinload(Organization.phone_numbers),
                 selectinload(Organization.activities),
+                selectinload(Organization.building),
             )
         )
         return result.scalars().all()
@@ -76,6 +88,29 @@ class OrganizationRepository:
                 selectinload(Organization.building),
             )
             .distinct()
+        )
+        return result.scalars().all()
+
+    async def get_in_coordinate_range(
+        self, min_lat: float, max_lat: float, min_lng: float, max_lng: float
+    ) -> list[Organization]:
+        """Получить организации в прямоугольной области"""
+        from ..model.building import Building
+
+        result = await self.db.execute(
+            select(Organization)
+            .join(Building)
+            .where(
+                and_(
+                    Building.latitude.between(min_lat, max_lat),
+                    Building.longitude.between(min_lng, max_lng),
+                )
+            )
+            .options(
+                selectinload(Organization.phone_numbers),
+                selectinload(Organization.activities),
+                selectinload(Organization.building),
+            )
         )
         return result.scalars().all()
 
@@ -107,7 +142,7 @@ class OrganizationRepository:
             )
             self.db.add(phone)
 
-        # Добавляем деятельности
+        # Добавляем деятельность
         if organization_data.activity_ids:
             activities_result = await self.db.execute(
                 select(Activity).where(Activity.id.in_(organization_data.activity_ids))
@@ -149,7 +184,7 @@ class OrganizationRepository:
                 )
                 self.db.add(phone)
 
-        # Обновляем деятельности
+        # Обновляем деятельность
         if update_data.activity_ids is not None:
             organization.activities.clear()
             activities_result = await self.db.execute(

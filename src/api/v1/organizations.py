@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from ...dto import Organization, OrganizationCreate
+from ...dto.building import CoordinateRange, RadiusSearch
+from ...dto.organization import Organization, OrganizationCreate
 from ...security import verify_api_key
 from ...service import ActivityService, BuildingService, OrganizationService
 from ..dependencies import (
@@ -81,3 +82,21 @@ async def get_organizations_by_activity(
             status_code=status.HTTP_404_NOT_FOUND, detail="Activity not found"
         )
     return await organization_service.get_organizations_by_activity(activity_id)
+
+
+@router.post("/search/range", response_model=list[Organization])
+async def search_organizations_in_range(
+    coord_range: CoordinateRange,
+    service: OrganizationService = Depends(get_organization_service),
+):
+    """Поиск организаций в прямоугольной области"""
+    return await service.search_organizations_in_range(coord_range)
+
+
+@router.post("/search/radius", response_model=list[Organization])
+async def search_organizations_in_radius(
+    search: RadiusSearch,
+    service: OrganizationService = Depends(get_organization_service),
+):
+    """Поиск организаций в радиусе"""
+    return await service.search_organizations_in_radius(search)

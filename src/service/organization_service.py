@@ -1,8 +1,10 @@
 import logging
 
+from geopy.distance import geodesic
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import with_transaction
+from ..dto.building import CoordinateRange, RadiusSearch
 from ..dto.organization import Organization, OrganizationCreate, OrganizationUpdate
 from ..repository import ActivityRepository, BuildingRepository, OrganizationRepository
 from ..service import ActivityService
@@ -17,7 +19,7 @@ class OrganizationService:
         self.activity_repo = ActivityRepository(db)
         self.activity_service = ActivityService(db)
 
-    async def get_organization(self, organization_id: int) -> Organization | None:
+    async def get_organization_by_id(self, organization_id: int) -> Organization | None:
         """Получить организацию по ID (бизнес-логика)"""
         organization = await self.organization_repo.get_with_relations(organization_id)
         if organization:
@@ -158,6 +160,42 @@ class OrganizationService:
 
         organizations = await self.organization_repo.search_by_name(name)
         return [Organization.model_validate(org) for org in organizations]
+
+    async def search_organizations_in_range(
+        self, coord_range: CoordinateRange
+    ) -> list[Organization]:
+        """Поиск организаций в прямоугольной области (бизнес-логика)"""
+        organizations = await self.organization_repo.get_in_coordinate_range(
+            coord_range.min_lat,
+            coord_range.max_lat,
+            coord_range.min_lng,
+            coord_range.max_lng,
+        )
+        return [Organization.model_validate(org) for org in organizations]
+
+    async def search_organizations_in_radius(
+        self, search: RadiusSearch
+    ) -> list[Organization]:
+        """Поиск организаций в радиусе (бизнес-логика)"""
+        all_organizations = await self.organization_repo.get_all_with_buildings()
+
+        center_point = (search.latitude, search.longitude)
+        organizations_in_radius = []
+
+        for organization in all_organizations:
+            if organization.building:
+                building_point = (
+                    organization.building.latitude,
+                    organization.building.longitude,
+                )
+                distance = geodesic(center_point, building_point).kilometers
+
+                if distance <= search.radius_km:
+                    organizations_in_radius.append(
+                        Organization.model_validate(organization)
+                    )
+
+        return organizations_in_radius
 
     def _validate_phone_format(self, phone: str) -> bool:
         """Валидация формата телефона (вспомогательный метод)"""

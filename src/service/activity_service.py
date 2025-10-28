@@ -15,13 +15,13 @@ class ActivityService:
 
     async def get_activity(self, activity_id: int) -> ActivityCreate | None:
         """Получить деятельность по ID (бизнес-логика)"""
-        activity = await self.repository.get_with_relations(activity_id)
+        activity = await self.repository.get(activity_id)
         if activity:
             return ActivityCreate.model_validate(activity)
         return None
 
     async def get_all_activities(self) -> list[ActivityCreate]:
-        """Получить все деятельности (бизнес-логика)"""
+        """Получить все деятельность (бизнес-логика)"""
         activities = await self.repository.get_all()
         return [ActivityCreate.model_validate(activity) for activity in activities]
 
@@ -154,3 +154,4 @@ class ActivityService:
         """Проверить циклические зависимости (вспомогательный метод)"""
         descendants = await self.get_descendant_activity_ids(activity_id)
         return new_parent_id in descendants
+

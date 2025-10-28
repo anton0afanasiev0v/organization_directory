@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 
-from .api.v1 import activities, buildings, organizations
+from .api.v1 import activities, buildings, fixtures, organizations
 from .config import settings
 from .database import Base, engine
 
@@ -31,6 +31,7 @@ app = FastAPI(
 app.include_router(organizations.router)
 app.include_router(buildings.router)
 app.include_router(activities.router)
+app.include_router(fixtures.router)
 
 
 @app.get("/")
